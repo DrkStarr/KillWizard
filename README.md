@@ -6,4 +6,4 @@
 
  Kill Wizard is an interactive fiction game entered into PunyComp, 2025.
 
-Compiling on Windows, run: killwizard.bat
+ Compiling on Windows, run: killwizard.bat
