@@ -1,0 +1,670 @@
+! ============================================================================ !
+!   KILL WIZARD - started on 12/29/2024
+! ============================================================================ !
+
+Array UUID_ARRAY string "UUID://457776C5-3F3D-4A16-9BEB-E771F6F4280F//";
+#ifdef UUID_ARRAY; #endif;
+
+Constant Story "Kill Wizard";
+Constant Headline "^A text adventure by Dark Star^(New players should type ABOUT)^";
+Constant MAX_SCORE 10;
+
+Release 2;
+Serial "251202";
+
+Constant STATUSLINE_SCORE; Statusline score;
+Constant INITIAL_LOCATION_VALUE = scavengersDen;
+Constant OPTIONAL_EXTENDED_METAVERBS;
+! Constant OPTIONAL_NO_DARKNESS;
+Constant CUSTOM_ABBREVIATIONS;
+Constant RUNTIME_ERRORS = 0;
+Constant GTOTALROOMS=21;
+Constant GTOTALOBJS=12;
+
+! Sets Display Variables For ABOUT
+#Iftrue (#version_number == 5);
+  Constant GTWORDS=590;   ! Dictionary Entries
+#IfNot;
+  Constant GTWORDS=565;   ! Dictionary Entries
+#Endif;
+
+! Include UNDO for .z5
+#Iftrue (#version_number == 5);
+  Constant OPTIONAL_PROVIDE_UNDO;
+  Constant DEATH_MENTION_UNDO;
+#Endif;
+
+[ DeathMessage; print "You have lost"; ];
+
+! ============================================================================ !
+
+Replace AttackSub;
+Replace ConsultSub;
+Replace DigSub;
+Replace DisrobeSub;
+Replace DrinkSub;
+Replace EatSub;
+Replace FeedSub;
+Replace FillSub;
+Replace GetOffSub;
+Replace JumpOverSub;
+Replace LockSub;
+Replace RemoveSub;
+Replace RubSub;
+Replace SearchSub;
+Replace SwitchOnSub;
+Replace SwitchOffSub;
+Replace TieSub;
+Replace TouchSub;
+Replace TransferSub;
+Replace TurnSub;
+
+Include "globals.h";
+Include "puny.h";
+
+Global iMobTrigger=0;
+Global iDrunkResponse=0;
+Global iBirdCall=0;
+Global iBirdReturn=0;
+Global iHotOil=0;
+Global iCourtyardTaunt=0;
+Global iSkeletonDeath=0;
+Global iChefMovement=0;
+Global iGolemMovement=0;
+Global iNecroAttack=0;
+Global iDenRain=0;
+
+! ============================================================================ !
+! Abbreviations
+! ============================================================================ !
+
+Abbreviate ". ";
+Abbreviate ", ";
+Abbreviate " the ";
+Abbreviate "The";
+Abbreviate "You";
+Abbreviate "ing";
+Abbreviate "'t need to";
+Abbreviate "Osric";
+Abbreviate "'s no";
+Abbreviate "you";
+Abbreviate "'t want to";
+Abbreviate "That's alread";
+Abbreviate "'t g";
+Abbreviate "the";
+Abbreviate "'t ";
+Abbreviate "'s ";
+Abbreviate "to ";
+Abbreviate "is ";
+Abbreviate "and ";
+Abbreviate "already ";
+Abbreviate "that ";
+Abbreviate "re ";
+Abbreviate "That would be ";
+Abbreviate "round";
+Abbreviate "need ";
+Abbreviate "ot ";
+Abbreviate "^                 ";
+Abbreviate "ut ";
+Abbreviate "nt ";
+Abbreviate "with ";
+Abbreviate "anywhere.";
+Abbreviate "Please";
+Abbreviate " th";
+Abbreviate "s a";
+Abbreviate " in";
+Abbreviate " can";
+Abbreviate "rea";
+Abbreviate " on";
+Abbreviate " be";
+Abbreviate " down";
+Abbreviate " st";
+Abbreviate " no attention";
+Abbreviate " pi";
+Abbreviate " li";
+Abbreviate " wi";
+Abbreviate " fo";
+Abbreviate "Darron";
+Abbreviate " fi";
+Abbreviate "uld";
+Abbreviate " open";
+Abbreviate " have";
+Abbreviate " him";
+Abbreviate " bac";
+Abbreviate "unde";
+Abbreviate ".^^";
+Abbreviate " from";
+Abbreviate " talisman";
+Abbreviate " door to";
+Abbreviate " go";
+Abbreviate " co";
+Abbreviate "when";
+Abbreviate " cl";
+Abbreviate " wo";
+Abbreviate " up";
+
+! ============================================================================ !
+
+Class  OutRch
+ with  before [;
+         Attack, Burn, Climb, Close, Cut, Enter, Insert, Open, Push, PushDir, Pull, Take, ThrowAt:
+           "You can't do that from here.";
+       ],
+ has   concealed static;
+
+Class  RoomObj
+ with  describe [;
+         rtrue;
+       ],
+       before [;
+         Enter, Go:
+           "You're already here.";
+         Exit:
+           <<Exit location>>;
+         Take, Remove, Turn, PushDir, Push, Pull:
+           "Don't be ridiculous.";
+       ],
+ has   concealed static;
+
+! ============================================================================ !
+
+Include "r_ScavengersDen";
+Include "r_Backyard";
+Include "r_OldForest";
+Include "r_Slums";
+Include "r_Crossroad";
+Include "r_Fields";
+Include "r_Farm";
+Include "r_RootCellar";
+Include "r_Moors";
+Include "r_Forest";
+Include "r_Drawbridge";
+Include "r_Gatehouse";
+Include "r_Allure";
+Include "r_Courtyard";
+Include "r_Antechamber";
+Include "r_GreatHall";
+Include "r_Kitchen";
+Include "r_Corridor";
+Include "r_Stairway";
+Include "r_Armory";
+Include "r_NecrosLair";
+
+Include "npc_Osric";
+Include "npc_Darron";
+Include "npc_Drunk";
+Include "npc_Wolf";
+Include "npc_Scarecrow";
+Include "npc_Crow";
+Include "npc_Banshees";
+Include "npc_Panther";
+Include "npc_Skeletons";
+Include "npc_Chef";
+Include "npc_Golems";
+Include "npc_Wizard";
+
+Include "o_Loincloth";
+Include "o_Axe";
+Include "o_Bow";
+Include "o_Arrows";
+Include "o_Firewood";
+Include "o_Flint";
+Include "o_Scroll";
+Include "o_Key";
+Include "o_Wine";
+Include "o_Talisman";
+Include "o_Rune";
+Include "o_Pouch";
+
+Include "p_Player";
+
+! ============================================================================ !
+
+[ Initialise;
+    player = selfPlayer;
+    lookmode = 2;  ! verbose
+    move loincloth to player;
+    print "^You haven't returned to the ";
+    print "Scavenger's Den in ages, ";
+    print "but this is a great place ";
+    print "to meet Darron, ";
+    print "a friend from eastern Shem";
+    print ". As you walk through the ";
+    print "door of the tavern, you are ";
+    print "greeted by Osric's ";
+    print "friendly face. He stands ";
+    print "behind the bar, pouring ale ";
+    print "for a group of strangers ";
+    print "in the corner.^";
+    print "^~Welcome, welcome, my ";
+    print "friend. You are 'ere just ";
+    print "in time,~ Osric smiles. ";
+    print "~Please, start a fire to ";
+    print "warm our bones while I pour ";
+    print "these pints. There's wood ";
+    "out back.~";
+];
+
+! ============================================================================ !
+
+[ BurnSub;
+    "You don't need to do that.";
+];
+
+[ DontNeedVerb;
+    print "You don't need that ";
+    "verb in this game.";
+];
+
+[ FullScoreSub;
+    ScoreSub();
+    if (score == 0) rtrue;
+    print "^Consisting of:^";
+    if (wolf.animalDead) {
+      print "1 point for killing ";
+      print "the wolf^";
+    }
+    if (scarecrow.mobDead) {
+      print "1 point for killing ";
+      print "the scarecrow^";
+    }
+    if (crow.animalDead) {
+      print "1 point for getting ";
+      print "the key from crow^";
+    }
+    if (wine.givenAway) {
+      print "1 point for giving ";
+      print "away the wine^";
+    }
+    if (panther.animalDead) {
+      print "1 point for killing ";
+      print "the panther^";
+    }
+    if (panther.animalGone) {
+      print "1 point for getting ";
+      print "rid of the panther^";
+    }
+    if (dbDrawbridge.drawbridgeOpen) {
+      print "1 point for opening ";
+      print "the drawbridge^";
+    }
+    if (cyGate.gateOpen) {
+      print "1 point for opening ";
+      print "the archway^";
+    }
+    if (kitchen.chefDead) {
+      print "1 point for getting ";
+      print "rid of the chef^";
+    }
+    if (golems.mobDead) {
+      print "1 point for getting ";
+      print "rid of the golems^";
+    }
+    if (wizard.mobDead) {
+      print "1 point for killing ";
+      print "the wizard^";
+    }
+];
+
+[ PAD;
+    print "He's already dead. ";
+    "Leave him be.";
+];
+
+[ PNFS;
+    print "Now is not the time to show ";
+    print "an extraordinary feat of ";
+    "strength.";
+];
+
+[ PKE;
+    print "You usually kill everything, ";
+    print "but tonight, you make an ";
+    "exception.";
+];
+
+[ PWA;
+    print "You don't need to shoot that. ";
+    "You'd only waste an arrow.";
+];
+
+[ AboutSub;
+    #Iftrue (#version_number == 5);
+      print "        Welcome to Kill Wizard. This is a parser game written in
+      PunyInform so that it will run on an Apple II+ circa 1980. It's a short game
+      that shouldn't be difficult, but mileage may vary. There are instant deaths,
+      but this version has UNDO. Also, the game uses about half of the verb set. Only 18
+      verbs are recognized, plus compass directions. Type VERBS to see the full list.^";
+      print "^        Kill Wizard contains a total of ", GTOTALROOMS, " rooms
+      with ", GTOTALOBJS, " moveable objects, ", GTWORDS, " dictionary entries.^";
+      "^        If you have any questions, please contact the author via email:
+      darkstar@@64infodarkness.com";
+    #IfNot;
+      print "Welcome to Kill Wizard. ";
+      print "This is a ";
+      print "parser game written in ";
+      print "PunyInform ";
+      print "so that it will run on an ";
+      print "Apple II+ ";
+      print "circa 1980. ";
+      print "It's a short game that ";
+      print "shouldn't be difficult, ";
+      print "but mileage may vary. ";
+      print "There are instant deaths, ";
+      print "and by playing this z3 ";
+      print "version, there ";
+      print "is no UNDO in the game. ";
+      print "Only the .z5 ";
+      print "version has that feature. ";
+      print "You might want to save ";
+      print "often.^";
+      print "^Also, the ";
+      print "game uses about half of the ";
+      print "verb set. ";
+      print "Only 18 verbs are ";
+      print "recognized, plus ";
+      print "compass directions. Type ";
+      print "VERBS to see ";
+      print "the full list.^";
+      print "^Kill Wizard contains a ";
+      print "total of ", GTOTALROOMS;
+      print " rooms with ", GTOTALOBJS;
+      print " moveable objects, ", GTWORDS;
+      print " dictionary entries.^";
+      print "^If you have any questions, ";
+      print "please contact the author ";
+      print "via email: ";
+      "darkstar@@64infodarkness.com";
+    #Endif;
+];
+
+[ CreditsSub;
+    #Iftrue (#version_number == 5);
+      style fixed;
+      print "^Author:
+      ^                 Dark Star
+      ^^Testers:
+      ^                 Allyson Gray
+      ^                 AM Ruf
+      ^                 Andrew Apted
+      ^                 Garry Francis
+      ^                 Jade
+      ^                 kqr
+      ^";
+      print "^Cover Art:
+      ^                 NightCafe (Flux Schnell)^
+      ^Special Thanks:
+      ^                 Graham Nelson
+      ^                 Fredrik Ramsberg
+      ^                 Johan Berntsson";
+      style roman;
+    #IfNot;
+      print "^Author:^";
+      print " Dark Star^";
+      print "^Testers:^";
+      print " Allyson Gray^";
+      print " AM Ruf^";
+      print " Andrew Apted^";
+      print " Garry Francis^";
+      print " Jade^";
+      print " kqr^";
+      print "^Cover Art:^";
+      print " NightCafe (Flux Schnell)^";
+      print "^Special Thanks:^";
+      print " Graham Nelson^";
+      print " Fredrik Ramsberg^";
+      print " Johan Berntsson";
+    #Endif;
+    "";
+];
+
+[ AskAboutSub;
+    if (player in necrosLair) <<Ask wizard noun>>;
+    if (player in greatHall) {
+      if (golems.mobDead) "There's no one to talk to.";
+      <<Ask skeletons noun>>;
+    }
+    if (player in kitchen) {
+      if (kitchen.chefDead) "There's no one to talk to.";
+      <<Ask chef noun>>;
+    }
+    if (player in courtyard) {
+      if (cyGate.gateOpen) "There's no one to talk to.";
+      <<Ask cyDemon noun>>;
+    }
+    if (player in moors) {
+      if (banshees in moors) <<Ask banshees noun>>;
+      "There's no one to talk to.";
+    }
+    if (player in slums && drunk in slums) <<Ask drunk noun>>;
+    if (player in slums) {
+      print "The poor don't want to talk. ";
+      "They just beg.";
+    }
+    if (player in scavengersDen) <<Ask osric noun>>;
+    "There's no one to talk to.";
+];
+
+[ AskForTopicSub;
+    if (player in necrosLair) <<AskFor wizard noun>>;
+    if (player in greatHall) {
+      if (golems.mobDead) "There's no one to talk to.";
+      <<AskFor skeletons noun>>;
+    }
+    if (player in kitchen) {
+      if (kitchen.chefDead) "There's no one to talk to.";
+      <<AskFor chef noun>>;
+    }
+    if (player in courtyard) {
+      if (cyGate.gateOpen) "There's no one to talk to.";
+      <<AskFor cyDemon noun>>;
+    }
+    if (player in moors && banshees in moors) <<AskFor banshees noun>>;
+    if (player in slums && drunk in slums) <<AskFor drunk noun>>;
+    if (player in scavengersDen) <<AskFor osric noun>>;
+    "There's no one to talk to.";
+];
+
+[ AskFor2ndSub;
+    if (player in necrosLair) <<AskFor wizard second>>;
+    if (player in greatHall) {
+      if (golems.mobDead) "There's no one to talk to.";
+      <<AskFor skeletons second>>;
+    }
+    if (player in kitchen) {
+      if (kitchen.chefDead) "There's no one to talk to.";
+      <<AskFor chef second>>;
+    }
+    if (player in moors && banshees in moors) <<AskFor banshees second>>;
+    if (player in slums && drunk in slums) <<AskFor Drunk second>>;
+    if (player in scavengersDen) <<AskFor Osric second>>;
+    "There's no one to talk to.";
+];
+
+[ ReadSub;
+    <<Examine noun>>;
+];
+
+[ TalkSub;
+    if (scroll.objectRead) {
+      print "Try using the verbs ASK or ";
+      "TELL. ie. ASK ABOUT BELKOR.";
+    }
+    print "Try using the verbs ASK or ";
+    "TELL. ie. ASK ABOUT FIRE.";
+];
+
+[ ShootSub;
+    if (bow in player) {
+      if (arrows in player) return PWA();
+      print "How are you going to hit ";
+      print "that. You don't have any ";
+      "arrows.";
+    }
+    print "You don't have a weapon ";
+    "to do that.";
+];
+
+[ VerbsSub;
+    print "These are the verbs needed ";
+    print "to win the game:^^";
+    #Iftrue (#version_number == 5);
+      style fixed;
+    #Endif;
+      print "- EXAMINE      ";
+      print "- READ^";
+      print "- UNLOCK       ";
+      print "- OPEN^";
+      print "- ENTER^";
+      print "- CUT          ";
+      print "- HIT^";
+      print "- SHOOT^";
+      print "- TAKE         ";
+      print "- GIVE^";
+      print "- PUSH         ";
+      print "- PULL^";
+      print "- PUT^";
+      print "- ASK          ";
+      print "- TELL^";
+      print "- BURN         ";
+      print "- THROW^";
+      print "- CLIMB^";
+      print "- UP           ";
+      print "- DOWN^";
+    #Iftrue (#version_number == 5);
+      style roman;
+    #Endif;
+    print "^or move in any ";
+    print "available direction.^";
+    rtrue;
+];
+
+[ XyzzySub;
+    print "You brace yourself for the ";
+    print "enchantment to take effect. ";
+    print "Magic words can do strange ";
+    print "things. Sadly enough, ";
+    "nothing happens.";
+];
+
+! ============================================================================ !
+
+[ AttackSub; return PNFS(); ];
+[ ConsultSub; return DontNeedVerb(); ];
+[ DigSub; return DontNeedVerb(); ];
+[ DisrobeSub; return DontNeedVerb(); ];
+[ DrinkSub; return DontNeedVerb(); ];
+[ EatSub; return DontNeedVerb(); ];
+[ FeedSub; return DontNeedVerb(); ];
+[ FillSub; return DontNeedVerb(); ];
+[ GetOffSub; return DontNeedVerb(); ];
+[ JumpOverSub;
+    print "You don't need to jump over ";
+    "anything in this game.";
+];
+[ LockSub;
+    print "You don't need to lock ";
+    "anything in this game.";
+];
+[ RemoveSub; return DontNeedVerb(); ];
+[ RubSub; return DontNeedVerb(); ];
+[ SitSub; return DontNeedVerb(); ];
+[ SwitchOnSub; return DontNeedVerb(); ];
+[ SwitchOffSub; return DontNeedVerb(); ];
+[ TieSub; return DontNeedVerb(); ];
+[ TouchSub; return DontNeedVerb(); ];
+[ TransferSub; return DontNeedVerb(); ];
+[ TurnSub; return DontNeedVerb(); ];
+
+[ SearchSub _i _plural;
+#Ifndef OPTIONAL_NO_DARKNESS;
+	if(location == thedark) return MSG_SEARCH_DARK;
+#Endif;
+	if (ObjectIsUntouchable(noun)) return;
+	_plural = PrintContents(1, noun);
+
+	if(noun has supporter) {
+		if(_plural == 0)
+			return MSG_SEARCH_NOTHING_ON;
+		else
+			return MSG_SEARCH_ON_IT_ISARE;
+	}
+	if(noun hasnt container) return DontNeedVerb();;
+	if(noun hasnt transparent && noun hasnt open)
+		return MSG_SEARCH_CANT_SEE_CLOSED;
+	if(AfterRoutines()) rtrue;
+	_i = MSG_SEARCH_EMPTY;
+	if(_plural)
+		_i = MSG_SEARCH_IN_IT_ISARE;
+	return _i;
+];
+
+! ============================================================================ !
+
+Extend 'sit' first
+	* 'at'/'on'/'in'/'inside' noun              -> Sit
+	* 'on' 'top' 'of' noun                      -> Sit;
+
+Extend 'lie' first
+	* 'on'/'in'/'inside' noun                   -> Sit
+	* 'on' 'top' 'of' noun                      -> Sit;
+
+Extend 'lock'
+    * noun                                      -> Lock;
+
+Extend 'ask'
+    * creature 'for' topic                      -> AskFor2nd
+    * 'for' topic                               -> AskForTopic
+    * 'about' topic                             -> AskAbout;
+
+Extend 'go'
+    * 'to' noun                                 -> Enter;
+
+Extend 'feed' first
+    * noun                                      -> Feed;
+
+Extend 'unlock'
+    * noun                                      -> Unlock;
+
+Extend 'read' first
+	* noun                                        -> Read;
+
+Extend 'touch'
+	* held 'to' noun                              -> Touch;
+
+Extend 'give' first
+  * held                                        -> Give;
+
+Verb 'about'
+    *                                           -> About
+    * 'game'                                    -> About;
+
+Verb 'burn' 'light' 'start' 'build' 'make'
+    * noun                                      -> Burn
+    * noun 'with' held                          -> Burn;
+
+#Iftrue (#version_number == 5);
+Verb 'credit' 'credits'
+    *                                          -> Credits;
+#IfNot;
+Verb 'credit'
+    *                                          -> Credits;
+#Endif;
+
+Verb 'full'
+    * 'score'                                   -> FullScore;
+
+Verb 'shoot' 'shot'
+    * noun                                     -> Shoot
+    * held 'at' noun                           -> Shoot;
+
+Verb 'talk'
+    * creature                                  -> Talk
+    * 'to' creature                             -> Talk;
+
+Verb 'verb' 'verbs'
+    *                                           -> Verbs;
+
+Verb 'xyzzy'
+    *                                           -> Xyzzy;
+! ============================================================================ !
