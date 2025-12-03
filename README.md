@@ -1,4 +1,4 @@
-\# KillWizard
+\#KillWizard
 
  Kill Wizard - Source Code using PunyInform 6.1.1
 
