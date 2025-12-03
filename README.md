@@ -1,18 +1,18 @@
 \# KillWizard
 
-&nbsp;Kill Wizard - Source Code using PunyInform 6.1.1
+ Kill Wizard - Source Code using PunyInform 6.1.1
 
-&nbsp;------------------------------------------------
-
-
-
-&nbsp;Copyright \&#169; 2022 Infodarkness Productions
+ ------------------------------------------------
 
 
 
-&nbsp;Kill Wizard is an interactive fiction game entered into PunyComp, 2025.
+ Copyright \&#169; 2025 Infodarkness Productions
 
 
 
-&nbsp;Compiling on Windows, run: killwizard.bat
+ Kill Wizard is an interactive fiction game entered into PunyComp, 2025.
+
+
+
+ Compiling on Windows, run: killwizard.bat
 
